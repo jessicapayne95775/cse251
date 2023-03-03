@@ -5,13 +5,13 @@ Requirements
 Questions:
 1. It is not required to save the solution path of each maze, but what would
    be your strategy if you needed to do so?
-   >
-   >
+   >I would create a dictionary of the maze file for the key and a tuple of tupled coordinates for each maze for the value.
+   >It would be shared between each thread so I would need to put a lock in place. It would only add the maze if it didn't already exist and only once it found the final path
 2. Is using threads to solve the maze a depth-first search (DFS) or breadth-first search (BFS)?
    Which search is "better" in your opinion? You might need to define better. 
    (see https://stackoverflow.com/questions/20192445/which-procedure-we-can-use-for-maze-exploration-bfs-or-dfs)
-   >
-   >
+   >BFS returns the shortest path. In my opinion this is better because it is more efficient. 
+   >DFS will give one path including backtracking, I believe. So for memory sake, BFS should be better.
 '''
 
 import math
@@ -60,9 +60,50 @@ def get_color():
 
 def solve_find_end(maze):
     """ finds the end position using threads.  Nothing is returned """
-    # When one of the threads finds the end position, stop all of them
-    # TODO - add code here
-    pass
+    global thread_count
+    thread_count += 1
+
+    def find_end_recursive(maze, row, col, solution_path):
+        """ Recursive function to find the end position """
+        maze.move(row, col, get_color())
+
+    # Base case: if we have reached the end position, return True
+        if (row, col) == maze.end_pos:
+            solution_path.append((row, col))
+            return True
+
+        # Check all possible moves
+        possible_moves = maze.get_possible_moves(row, col)
+        for move_row, move_col in possible_moves:
+            if maze.can_move_here(move_row, move_col):
+                # Add the current position to the solution path
+                solution_path.append((move_row, move_col))
+
+                # Recursively try to solve the maze from the new position
+                if find_end_recursive(maze, move_row, move_col, solution_path):
+                    return True
+
+                # If we didn't find a solution from the new position, backtrack
+                solution_path.pop()
+
+            # Recursively search in all four directions
+            directions = [(1, 0), (0, 1), (-1, 0), (0, -1)]
+            for d in directions:
+                new_row, new_col = row + d[0], col + d[1]
+                new_path = solution_path + [(new_row, new_col)]
+            # if not maze.is_valid(new_row, new_col):
+            #     continue
+                t = threading.Thread(target=find_end_recursive, args=(new_row, new_col, new_path), name=f'Thread {thread_count}')
+                t.start()
+        # If we have tried all possible moves and haven't found a solution, return False
+            start_row, start_col = maze.get_start_pos()
+            find_end_recursive(maze, start_row, start_col, solution_path)
+        return False
+
+        
+
+    # Start recursive search from the start position
+    
 
 
 def find_end(filename, delay):

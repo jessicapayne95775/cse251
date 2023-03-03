@@ -13,20 +13,33 @@ SCREEN_SIZE = 800
 COLOR = (0, 0, 255)
 
 
-# TODO add any functions
+def solve(maze, row, col, solution_path):
+    # Mark the current cell as visited
+    maze.move(row, col, COLOR)
 
-def solve(maze):
-    """ Solve the maze. The path object should be a list (x, y) of the positions 
-        that solves the maze, from the start position to the end position. """
+    # Base case: if we have reached the end position, return True
+    if (row, col) == maze.end_pos:
+        solution_path.append((row, col))
+        return True
 
-    # TODO add code here
-    solution_path = [] 
-    
-    # Remember that an object is passed by reference, so you can pass in the 
-    # solution_path object, modify it, and you won't need to return it from 
-    # your recursion function
-    
-    return solution_path
+    # Check all possible moves
+    possible_moves = maze.get_possible_moves(row, col)
+    for move_row, move_col in possible_moves:
+        if maze.can_move_here(move_row, move_col):
+            # Add the current position to the solution path
+            solution_path.append((move_row, move_col))
+
+            # Recursively try to solve the maze from the new position
+            if solve(maze, move_row, move_col, solution_path):
+                return True
+
+            # If we didn't find a solution from the new position, backtrack
+            
+            solution_path.pop()
+            maze.restore(row, col)
+
+    # If we have tried all possible moves and haven't found a solution, return False
+    return False
 
 
 def get_solution_path(filename):
@@ -36,9 +49,12 @@ def get_solution_path(filename):
 
     maze = Maze(screen, SCREEN_SIZE, SCREEN_SIZE, filename)
 
-    solution_path = solve(maze)
+    row, col = maze.start_pos
+    solution_path = [(row, col)]
 
-    print(f'Number of drawing commands for = {screen.get_command_count()}')
+    solve(maze, row, col, solution_path)
+
+    print(f'Number of drawing commands for {filename}: {screen.get_command_count()}')
 
     done = False
     speed = 1
@@ -58,17 +74,17 @@ def get_solution_path(filename):
 
 
 def find_paths():
-    files = ('verysmall.bmp', 'verysmall-loops.bmp',
-             'small.bmp', 'small-loops.bmp',
-             'small-odd.bmp', 'small-open.bmp', 'large.bmp', 'large-loops.bmp')
+    files = ('./verysmall.bmp', './verysmall-loops.bmp',
+             './small.bmp', './small-loops.bmp',
+             './small-odd.bmp', './small-open.bmp', './large.bmp', './large-loops.bmp')
 
     print('*' * 40)
     print('Part 1')
-    for filename in files:
+    for file_path in files:
         print()
-        print(f'File: {filename}')
-        solution_path = get_solution_path(filename)
-        print(f'Found path has length          = {len(solution_path)}')
+        print(f'File: {file_path}')
+        solution_path = get_solution_path(file_path)
+        print(f'Found path has length   = {len(solution_path)}')
     print('*' * 40)
 
 
