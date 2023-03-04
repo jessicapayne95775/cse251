@@ -9,17 +9,17 @@ Requirements
 Questions:
 1. What is the relationship between the time to process versus the number of CPUs?
    Does there appear to be an asymptote? If so, what do you think the asymptote is?
-   >
-   >
+   > The time to process vs the number of cpus seems to be the less cpu's you assign, the faster it runs. 
+   >It seems that after 4 cpus, the speed of processing doesn't improve much. So I would say that 4 is the asymptote.
 2. Is this a CPU bound or IO bound problem? Why?
-   >This is a CPU bound problem
-   >
+   >This is a CPU bound problem 
+   >The speed of this problem is determined by the speed of the central processer. 
 3. Would threads work on this assignment? Why or why not? (guess if you need to) 
-   >
-   >
+   > No, Because this is a cpu bound problem and multiprocessing is used for cpu bound problems.
+   > It would take too long with regular threads.
 4. When you run "create_final_video.py", does it produce a video with the elephants
    inside of the screen?
-   >
+   > Yes
 '''
 
 from matplotlib.pylab import plt  # load plot library
@@ -29,7 +29,7 @@ import timeit
 import multiprocessing as mp
 
 # 4 more than the number of cpu's on your computer
-CPU_COUNT = mp.cpu_count() + 4  
+CPU_COUNT = mp.cpu_count() + 4
 
 # TODO Your final video need to have 300 processed frames.  However, while you are 
 # testing your code, set this much lower
@@ -68,7 +68,7 @@ def get_files_to_process(files):
 
 def multiprocessing_func(cpu_count):
    images = []
-   for image_number in range(FRAME_COUNT):
+   for image_number in range(1, FRAME_COUNT):
       image_file = rf'elephant/image{image_number:03d}.png'
       green_file = rf'green/image{image_number:03d}.png'
       process_file = rf'processed/image{image_number:03d}.png'
