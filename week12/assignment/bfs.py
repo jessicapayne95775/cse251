@@ -5,105 +5,83 @@ import time
 from virusApi import *
 
 TOP_API_URL = 'http://127.0.0.1:8129'
-NUMBER_GENERATIONS = 6  # set this to 2 as you are testing your code
-NUMBER_THREADS = 0  # TODO use this to keep track of the number of threads you create
+NUMBER_GENERATIONS = 2  # set this to 2 as you are testing your code
+NUMBER_THREADS = 2  # TODO use this to keep track of the number of threads you create
 
 # -----------------------------------------------------------------------------
 
-
 def create_family(family_id, q: queue.Queue, pandemic: Pandemic):
-
-    # base case
-    if family_id == None:
+    if family_id is None:
         return
 
-    # CREATE FAMILY THREAD
-    family_response = requests.get(
-        f'http://{hostName}:{serverPort}/family/{family_id}')
-
-    if ("id" not in family_response.json()):
+    family_response = requests.get(f'http://{hostName}:{serverPort}/family/{family_id}')
+    if 'id' not in family_response.json():
         return
 
-    # ADD FAMILY
     family = Family.fromResponse(family_response.json())
-    #print(f'###\n{family}\n###')
     pandemic.add_family(family)
 
-    # Flag to indicate if there are no more parents to check
     any_more_parents = False
 
     virus1 = None
     virus2 = None
 
-    # Get VIRUS1
-    if family.virus1 != None:
-        response = requests.get(
-            f'http://{hostName}:{serverPort}/virus/{family.virus1}')
-        if response.ok:
+    if family.virus1 is not None:
+        virus1_thread = Request_thread(f'http://{hostName}:{serverPort}/virus/{family.virus1}')
+        virus1_thread.start()
+
+    if family.virus2 is not None:
+        virus2_thread = Request_thread(f'http://{hostName}:{serverPort}/virus/{family.virus2}')
+        virus2_thread.start()
+
+    offspring_threads = []
+    for id in family.offspring:
+        thread = Request_thread(f'http://{hostName}:{serverPort}/virus/{id}')
+        offspring_threads.append(thread)
+        thread.start()
+
+    if family.virus1 is not None:
+        virus1_thread.join()
+        response = virus1_thread.response
+        if response:
             virus1 = response.json()
 
-    # Get VIRUS2
-    if family.virus2 != None:
-        response = requests.get(
-            f'http://{hostName}:{serverPort}/virus/{family.virus2}')
-        if response.ok:
+    if family.virus2 is not None:
+        virus2_thread.join()
+        response = virus2_thread.response
+        if response:
             virus2 = response.json()
 
-    # Get OFFSPRING
     offspring = []
-    for id in family.offspring:
-        response = requests.get(f'http://{hostName}:{serverPort}/virus/{id}')
-        if response.ok:
+    for thread in offspring_threads:
+        thread.join()
+        response = thread.response
+        if response:
             offspring.append(response.json())
 
-    # ADD VIRUS1 to Pandemic
-    if virus1 != None:
+    if virus1 is not None:
         v = Virus.createVirus(virus1)
         pandemic.add_virus(v)
 
-        if v.parents != None:
+        if v.parents is not None:
             q.put(v.parents)
             any_more_parents = True
 
-    # ADD VIRUS2 to Pandemic
-    if virus2 != None:
+    if virus2 is not None:
         v = Virus.createVirus(virus2)
         pandemic.add_virus(v)
 
-        if v.parents != None:
+        if v.parents is not None:
             q.put(v.parents)
             any_more_parents = True
 
-    # ADD offspring to Pandemic
     for o in offspring:
         v = Virus.createVirus(o)
-        # don't try and add virus that we have already added
-        # (happens when we add a virus and then loop over the
-        # virus parent's offspring)
         if not pandemic.does_virus_exist(v.id):
             pandemic.add_virus(v)
 
-    # Exit the WHILE loop
     if not any_more_parents:
         q.put("DONE")
-
-
-def bfs_recursion(start_id, pandemic):
-
-    # create a queue to store family ids
-    q = queue.Queue()
-
-    # put on the first family id
-    q.put(start_id)
-
-    while True:
-        family_id = q.get()
-
-        if family_id == "DONE":
-            break
-
-        if family_id != None:
-            create_family(family_id, q, pandemic)
 
 
 def bfs(start_id, generations):
@@ -112,8 +90,23 @@ def bfs(start_id, generations):
     # tell server we are starting a new generation of viruses
     requests.get(f'{TOP_API_URL}/start/{generations}')
 
-    # get all the viruses in the pandemic recursively
-    bfs_recursion(start_id, pandemic)
+    # create a queue to store family ids
+    q = queue.Queue()
+
+    # put on the first family id
+    q.put(start_id)
+
+    threads = []
+
+    # create threads to process family ids
+    for i in range(NUMBER_THREADS):
+        t = threading.Thread(target=create_family, args=(None, q, pandemic))
+        threads.append(t)
+        t.start()
+
+    # wait for threads to complete
+    for t in threads:
+        t.join()
 
     requests.get(f'{TOP_API_URL}/end')
 
@@ -121,9 +114,25 @@ def bfs(start_id, generations):
     print(f'Total Viruses  : {pandemic.get_virus_count()}')
     print(f'Total Families : {pandemic.get_family_count()}')
     print(f'Generations    : {generations}')
-    
+
     return pandemic.get_virus_count()
 
+
+class Request_thread(threading.Thread):
+
+    def __init__(self, url):
+        # Call the Thread class's init function
+        threading.Thread.__init__(self)
+        self.url = url
+        self.response = {}
+
+    def run(self):
+        response = requests.get(self.url)
+        # Check the status code to see if the request succeeded.
+        if response.status_code == 200:
+            self.response = response.json()
+        else:
+            print('RESPONSE = ', response.status_code)
 
 def main():
     # Start a timer
