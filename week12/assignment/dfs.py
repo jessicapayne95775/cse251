@@ -12,7 +12,7 @@ import requests
 from virusApi import *
 
 TOP_API_URL = 'http://127.0.0.1:8129'
-NUMBER_GENERATIONS = 2  # set this to 2 as you are testing your code
+NUMBER_GENERATIONS = 6  # set this to 2 as you are testing your code
 NUMBER_THREADS = 2  # TODO use this to keep track of the number of threads you create
 
 # -----------------------------------------------------------------------------
